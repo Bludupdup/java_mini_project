@@ -9,7 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
-    "gemini:try": "node --env-file=.env.local server/tryGemini.js"
+    "ai:try": "node --env-file=.env.local server/tryModel.js"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",

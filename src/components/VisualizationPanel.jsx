@@ -10,6 +10,8 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import PlanPreview from "./PlanPreview";
+import { useLearning } from "../learning/LearningContext";
+import { PLAYBACK_SPEEDS } from "../learning/learningStore";
 import {
   readCachedVisualization,
   requestVisualization,
@@ -17,12 +19,11 @@ import {
 import { replayPlan } from "../pages/service/visualizationReplay";
 import "./VisualizationPanel.css";
 
-const PLAY_INTERVAL_MS = 1600;
-
 function sourceLabel(result) {
   if (result.source === "sample") return "Built-in sample";
 
-  const model = result.plan.metadata?.model ?? "Gemini";
+  // "nvidia/nemotron-3-super-120b-a12b:free" → "nemotron-3-super-120b-a12b"
+  const model = (result.plan.metadata?.model ?? "AI model").split("/").pop().replace(/:free$/, "");
   const tries = result.attempts === 1 ? "first try" : `${result.attempts} tries`;
 
   return `AI · ${model} · ${tries}${result.saved ? " · saved" : ""}`;
@@ -44,6 +45,9 @@ function VisualizationPanel({ topic }) {
   const [playing, setPlaying] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const controllerRef = useRef(null);
+  const { recordStep, state: learning } = useLearning();
+  // Settings → Visualization speed.
+  const playInterval = PLAYBACK_SPEEDS[learning.preferences.playbackSpeed];
 
   const frames = useMemo(() => (result ? replayPlan(result.plan) : []), [result]);
   const steps = result?.plan.steps ?? [];
@@ -53,7 +57,12 @@ function VisualizationPanel({ topic }) {
   // Stop waiting for the server when the panel goes away.
   useEffect(() => () => controllerRef.current?.abort(), []);
 
-  // Count the seconds while Gemini works, because it can take a minute.
+  // Remember the furthest step watched; it counts towards topic progress.
+  useEffect(() => {
+    if (status === "ready") recordStep(topic.id, stepIndex, steps.length);
+  }, [status, stepIndex, steps.length, topic.id, recordStep]);
+
+  // Count the seconds while the AI works, because it can take a minute or two.
   useEffect(() => {
     if (status !== "loading") return undefined;
 
@@ -65,14 +74,14 @@ function VisualizationPanel({ topic }) {
     return () => clearInterval(timer);
   }, [status]);
 
-  // Autoplay: one step forward every PLAY_INTERVAL_MS until the last step.
+  // Autoplay: one step forward every playInterval until the last step.
   useEffect(() => {
     if (!isPlaying) return undefined;
 
-    const timer = setTimeout(() => setStepIndex((index) => index + 1), PLAY_INTERVAL_MS);
+    const timer = setTimeout(() => setStepIndex((index) => index + 1), playInterval);
 
     return () => clearTimeout(timer);
-  }, [isPlaying, stepIndex]);
+  }, [isPlaying, stepIndex, playInterval]);
 
   async function generate() {
     controllerRef.current?.abort();
@@ -129,7 +138,7 @@ function VisualizationPanel({ topic }) {
         </div>
         <div className="visualization-heading-text">
           <h2>AI visualization</h2>
-          <p>Gemini turns this topic into a step-by-step animation</p>
+          <p>AI turns this topic into a step-by-step animation</p>
         </div>
         {status === "ready" && (
           <button className="viz-button ghost" type="button" onClick={generate}>
@@ -142,8 +151,8 @@ function VisualizationPanel({ topic }) {
       {status === "idle" && (
         <div className="viz-empty">
           <p>
-            Ask Gemini to design an animated walkthrough of {topic.title}. It
-            usually takes 20–60 seconds.
+            Ask the AI to design an animated walkthrough of {topic.title}. It
+            usually takes under a minute or two.
           </p>
           <button className="viz-button primary" type="button" onClick={generate}>
             <Sparkles size={16} />
@@ -156,7 +165,7 @@ function VisualizationPanel({ topic }) {
         <div className="viz-loading" role="status">
           <LoaderCircle className="viz-spin" size={22} />
           <div>
-            <strong>Gemini is designing the visualization… {elapsed}s</strong>
+            <strong>The AI is designing the visualization… {elapsed}s</strong>
             <span>Every plan is checked by the validator and repaired if needed.</span>
           </div>
         </div>

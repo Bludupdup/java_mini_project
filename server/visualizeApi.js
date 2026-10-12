@@ -3,16 +3,16 @@
  *
  * A Vite plugin that adds this route to the dev server (`npm run dev`) and
  * the preview server (`npm run preview`). The browser sends a topic; this
- * runs the analyzer here in Node, where the API key lives, and sends back
- * { plan, source, attempts, errors }.
+ * runs the analyzer here in Node, where the AI key lives, and sends back
+ * { plan, source, attempts, errors }. Only logged-in users may call it, so
+ * nobody else who can reach the server can spend the AI key.
  *
  * A production deploy needs the same handler in a real backend.
  */
 
 import { analyzeTopicWithLLM } from "../src/pages/service/visualizationAnalyzer.js";
-import { callGemini } from "./gemini.js";
-
-const MAX_BODY_BYTES = 50_000;
+import { getRequestUser } from "./authApi.js";
+import { BadRequestError, isRecord, readJsonBody, sendJson } from "./http.js";
 
 // Longest accepted value for each text field of a topic.
 const TEXT_LIMITS = {
@@ -25,40 +25,6 @@ const TEXT_LIMITS = {
 };
 const MAX_STEPS = 12;
 const MAX_STEP_LENGTH = 300;
-
-class BadRequestError extends Error {}
-
-const isRecord = (value) =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-
-function readJsonBody(req) {
-  return new Promise((resolve, reject) => {
-    let body = "";
-
-    req.on("data", (chunk) => {
-      body += chunk;
-
-      if (body.length > MAX_BODY_BYTES) {
-        reject(new BadRequestError("The request is too large."));
-        req.destroy();
-      }
-    });
-    req.on("end", () => {
-      try {
-        resolve(JSON.parse(body));
-      } catch {
-        reject(new BadRequestError("The request body must be JSON."));
-      }
-    });
-    req.on("error", reject);
-  });
-}
-
-function sendJson(res, status, data) {
-  res.statusCode = status;
-  res.setHeader("Content-Type", "application/json");
-  res.end(JSON.stringify(data));
-}
 
 // Whatever the browser sends is untrusted: keep only known fields, check
 // their types and cap their length, because all of it goes into the prompt.
@@ -101,9 +67,9 @@ function readTopic(input) {
   return topic;
 }
 
-export function visualizeApi({ apiKey, model }) {
-  const callModel = ({ systemPrompt, userPrompt }) =>
-    callGemini({ apiKey, model, systemPrompt, userPrompt });
+/** llm: { label, callModel } from llm.js, so this route works with any AI service. */
+export function visualizeApi({ llm, authStore }) {
+  const { callModel } = llm;
 
   // Requests for the same topic that arrive while one is already running
   // (a double click, two tabs) share it instead of paying for a second call.
@@ -117,7 +83,7 @@ export function visualizeApi({ apiKey, model }) {
       const started = Date.now();
       const log = (message) => console.log(`[visualize] ${topic.title}: ${message}`);
 
-      log(`asking ${model}...`);
+      log(`asking ${llm.label}...`);
       job = analyzeTopicWithLLM(topic, {
         callModel,
         onAttempt: ({ attempt, errors }) =>
@@ -143,13 +109,18 @@ export function visualizeApi({ apiKey, model }) {
     }
 
     try {
+      if (!(await getRequestUser(authStore, req))) {
+        sendJson(res, 401, { error: "Please log in to generate visualizations." });
+        return;
+      }
+
       const body = await readJsonBody(req);
       const topic = readTopic(isRecord(body) ? body.topic : undefined);
 
       sendJson(res, 200, await analyze(topic));
     } catch (error) {
       if (error instanceof BadRequestError) {
-        sendJson(res, 400, { error: error.message });
+        sendJson(res, error.status, { error: error.message });
         return;
       }
 

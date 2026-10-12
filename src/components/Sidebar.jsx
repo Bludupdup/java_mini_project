@@ -2,48 +2,76 @@ import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   BookOpen,
+  Bookmark,
   Code2,
-  Trophy,
   ChartNoAxesCombined,
   Settings,
   CircleHelp,
   ChevronRight,
   Boxes,
 } from "lucide-react";
+import { useLearning } from "../learning/LearningContext";
 
 const navigation = [
   {
     title: "LEARN",
     items: [
       { label: "Dashboard", icon: LayoutDashboard, path: "/" },
-      // No topics list page yet, so this item only highlights on a topic page.
-      { label: "Topics", icon: BookOpen, matchPrefix: "/topics/" },
-      { label: "Practice", icon: Code2 },
+      { label: "Topics", icon: BookOpen, path: "/topics" },
+      { label: "Saved", icon: Bookmark, path: "/bookmarks", count: "saved" },
+      { label: "Practice", icon: Code2, path: "/practice" },
     ],
   },
   {
     title: "YOUR JOURNEY",
     items: [
-      { label: "Achievements", icon: Trophy },
-      { label: "Progress", icon: ChartNoAxesCombined },
+      { label: "Progress", icon: ChartNoAxesCombined, path: "/progress" },
     ],
   },
 ];
 
-function isActive(item, pathname) {
-  if (item.path) {
-    return pathname === item.path;
-  }
+const bottomItems = [
+  { label: "Settings", icon: Settings, path: "/settings" },
+  { label: "Help & Support", icon: CircleHelp, path: "/help" },
+];
 
-  return Boolean(item.matchPrefix && pathname.startsWith(item.matchPrefix));
+// "/topics" is also active on a topic page such as "/topics/arrays".
+function isActive(path, pathname) {
+  if (path === "/") return pathname === "/";
+  return pathname === path || pathname.startsWith(`${path}/`);
+}
+
+function NavItem({ item, pathname, count = 0 }) {
+  const Icon = item.icon;
+  const active = isActive(item.path, pathname);
+
+  return (
+    <Link
+      className={`nav-item ${active ? "active" : ""}`}
+      to={item.path}
+      aria-current={active ? "page" : undefined}
+    >
+      <Icon size={18} strokeWidth={1.8} />
+      <span className="nav-label">{item.label}</span>
+
+      {count > 0 && (
+        <span className="nav-tag count" aria-label={`${count} saved`}>
+          {count}
+        </span>
+      )}
+      {active && <ChevronRight className="nav-arrow" size={16} />}
+    </Link>
+  );
 }
 
 function Sidebar() {
   const { pathname } = useLocation();
+  const { state } = useLearning();
+  const counts = { saved: state.bookmarks.length };
 
   return (
     <aside className="sidebar">
-      <div className="brand">
+      <Link className="brand" to="/" aria-label="DSA Universe, go to dashboard">
         <div className="brand-icon">
           <Boxes size={23} />
         </div>
@@ -52,53 +80,31 @@ function Sidebar() {
           <h2>DSA<span> Universe</span></h2>
           <p>YOUR LEARNING SPACE</p>
         </div>
-      </div>
+      </Link>
 
       <div className="sidebar-section">
         <span className="section-label">WORKSPACE</span>
       </div>
 
       {navigation.map((section) => (
-        <div className="nav-section" key={section.title}>
+        <nav className="nav-section" key={section.title} aria-label={section.title}>
           <p className="nav-heading">{section.title}</p>
 
-          {section.items.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(item, pathname);
-            const className = `nav-item ${active ? "active" : ""}`;
-
-            const content = (
-              <>
-                <Icon size={18} strokeWidth={1.8} />
-                <span>{item.label}</span>
-
-                {active && <ChevronRight className="nav-arrow" size={16} />}
-              </>
-            );
-
-            return item.path ? (
-              <Link className={className} to={item.path} key={item.label}>
-                {content}
-              </Link>
-            ) : (
-              <button className={className} key={item.label}>
-                {content}
-              </button>
-            );
-          })}
-        </div>
+          {section.items.map((item) => (
+            <NavItem
+              item={item}
+              pathname={pathname}
+              count={item.count ? counts[item.count] : 0}
+              key={item.label}
+            />
+          ))}
+        </nav>
       ))}
 
-      <div className="sidebar-bottom">
-        <button className="nav-item">
-          <Settings size={18} strokeWidth={1.8} />
-          <span>Settings</span>
-        </button>
-
-        <button className="nav-item">
-          <CircleHelp size={18} strokeWidth={1.8} />
-          <span>Help & Support</span>
-        </button>
+      <nav className="sidebar-bottom" aria-label="Settings and help">
+        {bottomItems.map((item) => (
+          <NavItem item={item} pathname={pathname} key={item.label} />
+        ))}
 
         <div className="sidebar-note">
           <div className="note-icon">
@@ -108,7 +114,7 @@ function Sidebar() {
           <p>Small steps. Strong foundations.</p>
           <span>Keep learning every day.</span>
         </div>
-      </div>
+      </nav>
     </aside>
   );
 }

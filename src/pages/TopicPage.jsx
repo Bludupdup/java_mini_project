@@ -1,45 +1,86 @@
-import { Link, useParams } from "react-router-dom";
+import { useEffect } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
+  ArrowRight,
   BookOpen,
+  ChartNoAxesCombined,
+  CircleCheckBig,
+  Circle,
   Clock3,
   Code2,
   ExternalLink,
   Lightbulb,
   PlayCircle,
 } from "lucide-react";
+import BookmarkButton from "../components/BookmarkButton";
+import SolvedButton from "../components/SolvedButton";
 import VisualizationPanel from "../components/VisualizationPanel";
+import { getTopicProblems } from "../data/problems";
 import { topics } from "../data/topics";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { useLearning } from "../learning/LearningContext";
 import "./TopicPage.css";
+
+// Goes back to wherever the learner came from. Opened from a link or a
+// bookmark there is nothing to go back to, so go to the topics list instead.
+function BackButton() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const hasHistory = location.key !== "default";
+
+  return (
+    <button
+      type="button"
+      className="topic-back-button"
+      onClick={() => (hasHistory ? navigate(-1) : navigate("/topics"))}
+    >
+      <ArrowLeft size={16} />
+      {hasHistory ? "Back" : "All topics"}
+    </button>
+  );
+}
 
 function TopicPage() {
   const { topicId } = useParams();
   const topic = topics.find((item) => item.id === topicId);
+  const { visitTopic, setCompleted, getProgress } = useLearning();
+
+  useDocumentTitle(topic ? topic.title : "Topic not found");
+
+  // Opening a topic counts as starting it.
+  useEffect(() => {
+    if (topic) visitTopic(topic.id);
+  }, [topic, visitTopic]);
 
   if (!topic) {
     return (
       <div className="topic-page">
-        <Link className="topic-back-button" to="/">
-          <ArrowLeft size={16} />
-          Back to dashboard
-        </Link>
+        <BackButton />
 
         <section className="topic-panel">
           <h2>Topic not found</h2>
           <p className="resource-subtitle">
-            There is no topic called "{topicId}" yet.
+            There is no topic called "{topicId}" yet.{" "}
+            <Link className="inline-link" to="/topics">
+              Browse all topics
+            </Link>
           </p>
         </section>
       </div>
     );
   }
 
+  const { status, percent } = getProgress(topic.id);
+  const completed = status === "completed";
+  const index = topics.indexOf(topic);
+  const previous = topics[index - 1];
+  const next = topics[index + 1];
+  const topicProblems = getTopicProblems(topic.id);
+
   return (
     <div className="topic-page">
-      <Link className="topic-back-button" to="/">
-        <ArrowLeft size={16} />
-        Back to dashboard
-      </Link>
+      <BackButton />
 
       <section className="topic-hero">
         <span className="topic-eyebrow">
@@ -60,6 +101,20 @@ function TopicPage() {
         <div className="topic-quick-stats">
           <span><BookOpen size={16} /> {topic.lessons} lessons</span>
           <span><Clock3 size={16} /> {topic.readTime}</span>
+          <span><ChartNoAxesCombined size={16} /> {percent}% done</span>
+        </div>
+
+        <div className="topic-actions">
+          <button
+            type="button"
+            className={`complete-button ${completed ? "done" : ""}`}
+            aria-pressed={completed}
+            onClick={() => setCompleted(topic.id, !completed)}
+          >
+            {completed ? <CircleCheckBig size={17} /> : <Circle size={17} />}
+            {completed ? "Completed" : "Mark as complete"}
+          </button>
+          <BookmarkButton topic={topic} variant="full" />
         </div>
       </section>
 
@@ -179,27 +234,54 @@ function TopicPage() {
           <section className="topic-panel">
             <h2>Practice problems</h2>
             <p className="resource-subtitle">
-              Apply what you have learned.
+              Apply what you have learned, then tick off what you solved.
             </p>
 
-            {topic.problems.map((problem) => (
-              <a
-                className="problem-link"
-                href={problem.url}
-                target="_blank"
-                rel="noreferrer"
-                key={problem.title}
-              >
-                <div>
-                  <strong>{problem.title}</strong>
-                  <span>{problem.platform} · {problem.difficulty}</span>
-                </div>
-                <ExternalLink size={15} />
-              </a>
+            {topicProblems.map((problem) => (
+              <div className="problem-item" key={problem.id}>
+                <SolvedButton problem={problem} />
+                <a
+                  className="problem-link"
+                  href={problem.url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <div>
+                    <strong>{problem.title}</strong>
+                    <span>{problem.platform} · {problem.difficulty}</span>
+                  </div>
+                  <ExternalLink size={15} />
+                </a>
+              </div>
             ))}
+
+            <Link className="text-button practice-link" to={`/practice?topic=${topic.id}`}>
+              Notes and more in Practice <ArrowRight size={15} />
+            </Link>
           </section>
         </aside>
       </div>
+
+      <nav className="topic-pager" aria-label="Other topics">
+        {previous && (
+          <Link className="pager-link" to={`/topics/${previous.id}`}>
+            <ArrowLeft size={17} />
+            <span>
+              <small>Previous topic</small>
+              {previous.title}
+            </span>
+          </Link>
+        )}
+        {next && (
+          <Link className="pager-link next" to={`/topics/${next.id}`}>
+            <span>
+              <small>Next topic</small>
+              {next.title}
+            </span>
+            <ArrowRight size={17} />
+          </Link>
+        )}
+      </nav>
     </div>
   );
 }

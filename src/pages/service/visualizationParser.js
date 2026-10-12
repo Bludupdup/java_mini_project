@@ -1,7 +1,7 @@
 /**
  * Turns the LLM's reply text into a plan object.
  *
- * JSON mode makes Gemini reply with bare JSON, but models still sometimes
+ * JSON mode makes models reply with bare JSON, but they still sometimes
  * wrap it in ```json fences, add a sentence around it, or nest it under a
  * "plan" key. This copes with all three and never throws: problems come back
  * as an error message that can be sent to the model to fix.

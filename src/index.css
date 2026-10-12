@@ -38,3 +38,18 @@ a {
 #root {
   min-height: 100vh;
 }
+
+/* One visible focus ring for everything you can tab to. */
+:where(a, button, select, input, [role="option"]):focus-visible {
+  outline: 2px solid #8f7dff;
+  outline-offset: 2px;
+}
+
+/* Settings → "Reduce motion" switches off animations and transitions everywhere. */
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}

@@ -1,7 +1,7 @@
 /**
  * Browser side of the analyzer.
  *
- * Asks our own server, never Gemini directly (the key lives on the server),
+ * Asks our own server, never the AI directly (the key lives on the server),
  * and keeps good AI plans in localStorage so revisiting a topic doesn't
  * cost another slow LLM call.
  */
@@ -23,8 +23,34 @@ const TOPIC_FIELDS = [
   "pseudocode",
 ];
 
+const CACHE_PREFIX = "dsa-visualization:";
+
 // The prompt version is part of the key, so changing the prompt ignores old plans.
-const cacheKey = (topic) => `dsa-visualization:v${PROMPT_VERSION}:${topic.id}`;
+const cacheKey = (topic) => `${CACHE_PREFIX}v${PROMPT_VERSION}:${topic.id}`;
+
+function cachedKeys() {
+  try {
+    return Object.keys(localStorage).filter((key) => key.startsWith(CACHE_PREFIX));
+  } catch {
+    return [];
+  }
+}
+
+/** How many AI plans are saved in this browser (any prompt version). */
+export const countCachedVisualizations = () => cachedKeys().length;
+
+/** Forgets every saved AI plan, so the next view asks the AI again. Returns how many. */
+export function clearCachedVisualizations() {
+  const keys = cachedKeys();
+
+  try {
+    keys.forEach((key) => localStorage.removeItem(key));
+  } catch {
+    return 0;
+  }
+
+  return keys.length;
+}
 
 /** The saved AI plan for this topic, or null. */
 export function readCachedVisualization(topic) {

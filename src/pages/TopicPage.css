@@ -354,3 +354,127 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Topic actions: complete + save */
+
+.topic-back-button {
+  cursor: pointer;
+}
+
+.topic-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.complete-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  background: linear-gradient(145deg, #8871ff, #5141c9);
+  border: 1px solid transparent;
+  border-radius: 11px;
+  transition: 180ms ease;
+}
+
+.complete-button:hover {
+  filter: brightness(1.1);
+}
+
+.complete-button.done {
+  color: #8de2b5;
+  background: #17372c;
+  border-color: #285a43;
+}
+
+.complete-button.done:hover {
+  filter: none;
+  border-color: #3f8a66;
+}
+
+/* Previous / next topic */
+
+.topic-pager {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.pager-link {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 20px;
+  color: #c1c9dc;
+  background: linear-gradient(145deg, #131827, #101420);
+  border: 1px solid #252b3e;
+  border-radius: 15px;
+  transition: 180ms ease;
+}
+
+.pager-link:hover {
+  color: #fff;
+  border-color: #8270ff;
+}
+
+.pager-link span {
+  display: grid;
+  gap: 4px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.pager-link small {
+  color: #8995b0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.pager-link.next {
+  grid-column: 2;
+  justify-content: flex-end;
+  text-align: right;
+}
+
+@media (max-width: 600px) {
+  .topic-pager {
+    grid-template-columns: 1fr;
+  }
+
+  .pager-link.next {
+    grid-column: auto;
+  }
+}
+
+/* Practice problems: a solved checkbox next to each link */
+
+.problem-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid #252b3e;
+}
+
+.problem-item:last-of-type {
+  border-bottom: none;
+}
+
+.problem-item .problem-link {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 0;
+  border-bottom: none;
+}
+
+.practice-link {
+  margin-top: 14px;
+}
