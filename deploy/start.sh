@@ -10,6 +10,19 @@ java $JAVA_OPTS -jar /app/backend.jar \
   --server.address=127.0.0.1 \
   --server.port=8080 \
   --server.tomcat.threads.max=20 &
+JAVA_PID=$!
+
+# Open the front door only once Spring Boot answers (it takes about a minute
+# on the free plan). Until then Render keeps the visitor on its own "waking
+# up" screen, instead of showing the app with "still starting up" errors.
+until (exec 3<>/dev/tcp/127.0.0.1/8080) 2>/dev/null; do
+  if ! kill -0 "$JAVA_PID" 2>/dev/null; then
+    echo "[start] the backend stopped before it was ready"
+    exit 1
+  fi
+  sleep 1
+done
+echo "[start] backend is up, starting the web server"
 
 BACKEND_URL=http://127.0.0.1:8080 node /app/server/prodServer.js &
 
