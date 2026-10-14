@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getTopicProblems, problems } from "../data/problems";
-import { topics } from "../data/topics";
+import { getTopicProblems, problems, topics } from "../test/catalog";
 import { ACHIEVEMENTS, evaluateAchievements, findNewAchievements } from "./achievements";
 import { getInitials, timeAgo } from "./format";
 import { emptyLearningState, getLearningStats, learningReducer } from "./learningStore";

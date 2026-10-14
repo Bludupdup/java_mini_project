@@ -1111,6 +1111,35 @@
   font-size: 12px;
 }
 
+/* Algorithms page: one list per topic. */
+.algorithm-group {
+  margin-bottom: 28px;
+}
+
+.algorithm-group-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.algorithm-group-heading h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 18px;
+}
+
+.algorithm-complexity {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  color: #c4b8ff;
+  font: 12px Consolas, monospace;
+  border: 1px solid rgba(136, 113, 255, 0.35);
+  border-radius: 999px;
+  background: rgba(136, 113, 255, 0.1);
+}
+
 .progress-row-percent {
   width: 46px;
   color: #c8d0e4;
@@ -2261,6 +2290,22 @@
 .auth-alert svg {
   flex-shrink: 0;
   margin-top: 1px;
+}
+
+/* "Your last change wasn't saved", above the page content. */
+.save-error {
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.save-error span {
+  flex: 1;
+}
+
+.save-error .icon-button {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
 }
 
 .auth-submit {

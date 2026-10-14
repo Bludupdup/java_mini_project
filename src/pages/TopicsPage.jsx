@@ -1,13 +1,12 @@
+import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Bookmark, X } from "lucide-react";
 import FilterSelect from "../components/FilterSelect";
 import TopicGrid from "../components/TopicGrid";
-import { topics } from "../data/topics";
+import { useCatalog } from "../catalog/CatalogContext";
 import { filterTopics, getFilterOptions, searchTopics } from "../data/topicSearch";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useLearning } from "../learning/LearningContext";
-
-const options = getFilterOptions(topics);
 
 // A link with ?level=Expert must not hide every topic: ignore unknown values.
 const pick = (value, allowed) => (allowed.includes(value) ? value : "");
@@ -18,6 +17,8 @@ const pick = (value, allowed) => (allowed.includes(value) ? value : "");
  */
 function TopicsPage({ search, onSearchChange }) {
   useDocumentTitle("All topics");
+  const { topics } = useCatalog();
+  const options = useMemo(() => getFilterOptions(topics), [topics]);
   const [params, setParams] = useSearchParams();
   const { state } = useLearning();
 

@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Bell, Flame, Sparkles, Trophy } from "lucide-react";
-import { topics } from "../data/topics";
+import { useCatalog } from "../catalog/CatalogContext";
 import { useDismiss } from "../hooks/useDismiss";
 import { timeAgo } from "../learning/format";
 import { useLearning } from "../learning/LearningContext";
@@ -11,6 +11,7 @@ const KIND_ICONS = { tip: Sparkles, streak: Flame, achievement: Trophy };
 
 /** The bell: achievement unlocks and streak reminders. Opening it marks them read. */
 function NotificationsMenu() {
+  const { topics } = useCatalog();
   const { state, markNotificationsRead } = useLearning();
   // When the menu was opened (null = closed), and what was already read before that.
   const [openedAt, setOpenedAt] = useState(null);

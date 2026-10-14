@@ -1,8 +1,8 @@
 /**
  * Everything the learner has done and chosen: saved topics, progress per
  * topic, solved problems, achievements, active days and preferences.
- * Plain functions only; LearningProvider connects them to React and
- * localStorage.
+ * Plain functions only; LearningProvider connects them to React and to the
+ * backend, which keeps them in the database (see learningClient.js).
  *
  * State shape:
  * {
@@ -24,6 +24,7 @@
  * Times come in through actions (action.now), so the reducer stays pure.
  */
 
+// Where this browser kept progress before it moved to the server.
 export const STORAGE_KEY = "dsa-universe:learning:v1";
 const MAX_ACTIVITY_DAYS = 400;
 export const MAX_NOTE_LENGTH = 2000;
@@ -136,41 +137,56 @@ export function sanitizeLearningState(input) {
   return state;
 }
 
-/** Each account keeps its own progress in this browser. */
-export const userStorageKey = (userId) => `${STORAGE_KEY}:${userId}`;
-
-export function loadLearningState(key, storage = globalThis.localStorage) {
-  try {
-    return sanitizeLearningState(JSON.parse(storage.getItem(key)));
-  } catch {
-    return emptyLearningState();
-  }
-}
-
-export function saveLearningState(state, key, storage = globalThis.localStorage) {
-  try {
-    storage.setItem(key, JSON.stringify(state));
-  } catch {
-    // Storage is full or blocked; progress just won't survive a reload.
-  }
+/** Has the learner done or chosen anything yet? (Preferences alone don't count.) */
+export function hasLearningData(state) {
+  return (
+    state.bookmarks.length > 0 ||
+    Object.keys(state.topics).length > 0 ||
+    Object.keys(state.problems).length > 0 ||
+    state.activityDays.length > 0 ||
+    Object.keys(state.achievements).length > 0
+  );
 }
 
 /**
- * Progress saved before accounts existed is under the plain STORAGE_KEY.
- * The first account registered in this browser takes it over, so nothing is lost.
+ * Before progress lived on the server, this browser saved it under
+ * STORAGE_KEY (as a guest) or `${STORAGE_KEY}:<old account id>`. If exactly
+ * one of those saves holds anything, returns { keys, state } so it can be
+ * moved into the account; otherwise null (nothing to move, or no way to tell
+ * whose it is).
  */
-export function claimGuestProgress(userId, storage = globalThis.localStorage) {
+export function findLegacyProgress(storage = globalThis.localStorage) {
   try {
-    const guest = storage.getItem(STORAGE_KEY);
-    const key = userStorageKey(userId);
+    const keys = [];
 
-    if (guest === null || storage.getItem(key) !== null) return false;
+    for (let index = 0; index < storage.length; index += 1) {
+      const key = storage.key(index);
+      if (key === STORAGE_KEY || key?.startsWith(`${STORAGE_KEY}:`)) keys.push(key);
+    }
 
-    storage.setItem(key, guest);
-    storage.removeItem(STORAGE_KEY);
-    return true;
+    const saves = keys
+      .map((key) => {
+        try {
+          return sanitizeLearningState(JSON.parse(storage.getItem(key)));
+        } catch {
+          return emptyLearningState();
+        }
+      })
+      .filter(hasLearningData);
+
+    return saves.length === 1 ? { keys, state: saves[0] } : null;
   } catch {
-    return false;
+    // Storage is blocked (private mode, browser settings).
+    return null;
+  }
+}
+
+/** Deletes the old browser saves once they are safely on the server. */
+export function removeLegacyProgress(keys, storage = globalThis.localStorage) {
+  try {
+    for (const key of keys) storage.removeItem(key);
+  } catch {
+    // Nothing to do: they will just be found (and skipped) again.
   }
 }
 

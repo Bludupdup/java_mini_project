@@ -52,13 +52,3 @@ export function sendJson(res, status, data, headers = {}) {
   for (const [name, value] of Object.entries(headers)) res.setHeader(name, value);
   res.end(JSON.stringify(data));
 }
-
-/** The value of one cookie from the request, or null. */
-export function readCookie(req, name) {
-  for (const part of (req.headers.cookie ?? "").split(";")) {
-    const [key, ...value] = part.trim().split("=");
-    if (key === name) return decodeURIComponent(value.join("="));
-  }
-
-  return null;
-}

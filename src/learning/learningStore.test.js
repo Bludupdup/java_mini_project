@@ -1,17 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
-  claimGuestProgress,
   computeBestStreak,
   computeStreak,
   emptyLearningState,
+  findLegacyProgress,
   getLearningStats,
   getNextTopic,
   getTopicProgress,
+  hasLearningData,
   learningReducer,
-  loadLearningState,
+  removeLegacyProgress,
+  sanitizeLearningState,
   STORAGE_KEY,
   toDayKey,
-  userStorageKey,
 } from "./learningStore";
 
 // Local-time noon, so day keys don't shift with the time zone.
@@ -208,12 +209,10 @@ describe("stats", () => {
   });
 });
 
-describe("loading saved data", () => {
-  const storage = (text) => ({ getItem: (key) => (key === STORAGE_KEY ? text : null) });
-
-  it("falls back to an empty state for missing or broken data", () => {
-    expect(loadLearningState(STORAGE_KEY, storage(null))).toEqual(emptyLearningState());
-    expect(loadLearningState(STORAGE_KEY, storage("{not json"))).toEqual(emptyLearningState());
+describe("reading data from the server or a file", () => {
+  it("falls back to an empty state for missing data", () => {
+    expect(sanitizeLearningState(null)).toEqual(emptyLearningState());
+    expect(sanitizeLearningState("not an object")).toEqual(emptyLearningState());
   });
 
   it("drops anything that isn't valid", () => {
@@ -230,7 +229,7 @@ describe("loading saved data", () => {
       preferences: { name: "Sam", playbackSpeed: "warp", reduceMotion: "yes" },
     };
 
-    expect(loadLearningState(STORAGE_KEY, storage(JSON.stringify(saved)))).toEqual({
+    expect(sanitizeLearningState(saved)).toEqual({
       ...emptyLearningState(),
       bookmarks: ["arrays"],
       topics: { arrays: { visitedAt: NOW } },
@@ -244,42 +243,77 @@ describe("loading saved data", () => {
   it("still reads data saved before practice and achievements existed", () => {
     const old = { bookmarks: ["graphs"], topics: {}, activityDays: [] };
 
-    expect(loadLearningState(STORAGE_KEY, storage(JSON.stringify(old)))).toEqual({
-      ...emptyLearningState(),
-      bookmarks: ["graphs"],
-    });
+    expect(sanitizeLearningState(old)).toEqual({ ...emptyLearningState(), bookmarks: ["graphs"] });
+  });
+
+  it("knows whether there is anything worth keeping", () => {
+    expect(hasLearningData(emptyLearningState())).toBe(false);
+    expect(hasLearningData({ ...emptyLearningState(), preferences: { name: "Sam" } })).toBe(false);
+    expect(hasLearningData(run({ type: "toggleBookmark", id: "graphs" }))).toBe(true);
   });
 });
 
-describe("accounts", () => {
+describe("progress this browser saved before it moved to the server", () => {
+  // Works like localStorage: length, key(i), getItem, removeItem.
   function memoryStorage(entries = {}) {
     const data = new Map(Object.entries(entries));
     return {
+      get length() {
+        return data.size;
+      },
+      key: (index) => [...data.keys()][index] ?? null,
       getItem: (key) => (data.has(key) ? data.get(key) : null),
-      setItem: (key, value) => data.set(key, value),
       removeItem: (key) => data.delete(key),
       data,
     };
   }
 
-  it("gives progress from before accounts existed to the first new account", () => {
-    const storage = memoryStorage({ [STORAGE_KEY]: '{"bookmarks":["graphs"]}' });
+  const accountKey = (id) => `${STORAGE_KEY}:${id}`;
 
-    expect(claimGuestProgress("user-1", storage)).toBe(true);
-    expect(storage.data.has(STORAGE_KEY)).toBe(false);
-    expect(loadLearningState(userStorageKey("user-1"), storage).bookmarks).toEqual(["graphs"]);
+  it("finds a guest save or an old account's save", () => {
+    const guest = memoryStorage({ [STORAGE_KEY]: '{"bookmarks":["graphs"]}' });
+    const account = memoryStorage({ [accountKey("old-id")]: '{"bookmarks":["arrays"]}' });
 
-    // Nothing left to claim for the next account.
-    expect(claimGuestProgress("user-2", storage)).toBe(false);
+    expect(findLegacyProgress(guest)).toEqual({
+      keys: [STORAGE_KEY],
+      state: { ...emptyLearningState(), bookmarks: ["graphs"] },
+    });
+    expect(findLegacyProgress(account).state.bookmarks).toEqual(["arrays"]);
   });
 
-  it("never overwrites an account that already has progress", () => {
+  it("ignores empty or broken saves and other apps' keys", () => {
     const storage = memoryStorage({
-      [STORAGE_KEY]: '{"bookmarks":["graphs"]}',
-      [userStorageKey("user-1")]: '{"bookmarks":["arrays"]}',
+      [STORAGE_KEY]: "{not json",
+      [accountKey("a")]: JSON.stringify(emptyLearningState()),
+      [accountKey("b")]: '{"bookmarks":["trees"]}',
+      "dsa-visualization:arrays": "{}",
+    });
+    const found = findLegacyProgress(storage);
+
+    expect(found.state.bookmarks).toEqual(["trees"]);
+    // All three old saves can go once it's moved; the visualization cache stays.
+    expect(found.keys).toHaveLength(3);
+    removeLegacyProgress(found.keys, storage);
+    expect([...storage.data.keys()]).toEqual(["dsa-visualization:arrays"]);
+  });
+
+  it("moves nothing when it can't tell whose progress it is", () => {
+    const storage = memoryStorage({
+      [accountKey("a")]: '{"bookmarks":["trees"]}',
+      [accountKey("b")]: '{"bookmarks":["graphs"]}',
     });
 
-    expect(claimGuestProgress("user-1", storage)).toBe(false);
-    expect(loadLearningState(userStorageKey("user-1"), storage).bookmarks).toEqual(["arrays"]);
+    expect(findLegacyProgress(storage)).toBeNull();
+    expect(findLegacyProgress(memoryStorage())).toBeNull();
+  });
+
+  it("copes with storage that is blocked", () => {
+    const blocked = {
+      get length() {
+        throw new Error("SecurityError");
+      },
+    };
+
+    expect(findLegacyProgress(blocked)).toBeNull();
   });
 });

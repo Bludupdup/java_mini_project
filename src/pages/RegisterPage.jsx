@@ -5,16 +5,10 @@ import { useAuth } from "../auth/AuthContext";
 import { NAME_MAX, PASSWORD_MIN, validateRegistration } from "../auth/authRules";
 import { AuthField, AuthLayout, FormAlert } from "../components/AuthForm";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
-import { STORAGE_KEY } from "../learning/learningStore";
+import { findLegacyProgress } from "../learning/learningStore";
 
-// Progress saved before accounts existed? It moves into the new account.
-function hasGuestProgress() {
-  try {
-    return localStorage.getItem(STORAGE_KEY) !== null;
-  } catch {
-    return false;
-  }
-}
+// Progress this browser saved before it moved to the server? It moves into the new account.
+const hasGuestProgress = () => findLegacyProgress() !== null;
 
 function RegisterPage() {
   useDocumentTitle("Create account");

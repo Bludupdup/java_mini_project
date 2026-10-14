@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowRight, Search, X } from "lucide-react";
 import NotificationsMenu from "./NotificationsMenu";
 import ProfileMenu from "./ProfileMenu";
-import { topics } from "../data/topics";
+import { useCatalog } from "../catalog/CatalogContext";
 import { searchTopics } from "../data/topicSearch";
 
 const MAX_SUGGESTIONS = 6;
@@ -19,6 +19,7 @@ function isTypingTarget(element) {
 const keepFocus = (event) => event.preventDefault();
 
 function Header({ search, onSearchChange }) {
+  const { topics } = useCatalog();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const inputRef = useRef(null);

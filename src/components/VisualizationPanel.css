@@ -148,7 +148,8 @@
   font-weight: 600;
 }
 
-.viz-badge.sample {
+.viz-badge.sample,
+.viz-badge.built-in {
   color: #ffc98f;
   background: #3a2a17;
   border-color: #6b4a24;

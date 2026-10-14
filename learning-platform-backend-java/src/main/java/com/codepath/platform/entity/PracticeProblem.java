@@ -1,58 +1,38 @@
 package com.codepath.platform.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import org.hibernate.annotations.Immutable;
 
 @Entity
+@Immutable
 @Table(name = "practice_problems")
 public class PracticeProblem {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "topic_id", nullable = false)
-    @JsonIgnore
     private Topic topic;
 
-    @Column(nullable = false, length = 250)
+    // The id the frontend uses, taken from the URL: "two-sum".
+    @Column(nullable = false, unique = true)
+    private String slug;
+
     private String title;
-
-    @Column(nullable = false, length = 50)
-    private String platform = "LeetCode";
-
-    @Column(name = "external_url", nullable = false, columnDefinition = "TEXT")
-    private String externalUrl;
-
-    @Column(nullable = false, length = 30)
+    private String platform;
     private String difficulty;
+    private String url;
+    private int position;
 
-    @Column(name = "problem_type", nullable = false, length = 100)
-    private String problemType = "Core Algorithm";
-
-    public PracticeProblem() {}
+    protected PracticeProblem() {}
 
     public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-
     public Topic getTopic() { return topic; }
-    public void setTopic(Topic topic) { this.topic = topic; }
-
-    public Long getTopicId() { return topic != null ? topic.getId() : null; }
-
+    public String getSlug() { return slug; }
     public String getTitle() { return title; }
-    public void setTitle(String title) { this.title = title; }
-
     public String getPlatform() { return platform; }
-    public void setPlatform(String platform) { this.platform = platform; }
-
-    public String getExternalUrl() { return externalUrl; }
-    public void setExternalUrl(String externalUrl) { this.externalUrl = externalUrl; }
-
     public String getDifficulty() { return difficulty; }
-    public void setDifficulty(String difficulty) { this.difficulty = difficulty; }
-
-    public String getProblemType() { return problemType; }
-    public void setProblemType(String problemType) { this.problemType = problemType; }
+    public String getUrl() { return url; }
+    public int getPosition() { return position; }
 }

@@ -1,8 +1,6 @@
-import { resolve } from 'node:path'
 import react from '@vitejs/plugin-react'
 import { defineConfig, loadEnv } from 'vite'
-import { authApi } from './server/authApi.js'
-import { createAuthStore } from './server/authStore.js'
+import { createBackendAuth } from './server/backendAuth.js'
 import { createModelCaller } from './server/llm.js'
 import { visualizeApi } from './server/visualizeApi.js'
 
@@ -12,15 +10,20 @@ export default defineConfig(({ mode }) => {
   // This runs in Node, so the key goes to the server plugin and never to the browser.
   const env = loadEnv(mode, process.cwd(), '')
 
-  // Accounts and sessions live in .data/ (gitignored), next to this file.
-  const authStore = createAuthStore(resolve(process.cwd(), '.data', 'auth.json'))
+  // The Java backend (learning-platform-backend-java): accounts, topics, progress.
+  const backendUrl = env.BACKEND_URL || 'http://localhost:8080'
+
+  // /api/* goes to the Java backend, except /api/visualize, which the plugin
+  // below answers first (plugin routes run before the proxy).
+  const proxy = { '/api': { target: backendUrl } }
 
   return {
     plugins: [
       react(),
-      authApi(authStore),
       // OpenRouter when OPENROUTER_API_KEY is set, otherwise Gemini (see server/llm.js).
-      visualizeApi({ llm: createModelCaller(env), authStore }),
+      visualizeApi({ llm: createModelCaller(env), getRequestUser: createBackendAuth(backendUrl) }),
     ],
+    server: { proxy },
+    preview: { proxy },
   }
 })

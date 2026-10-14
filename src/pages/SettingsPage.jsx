@@ -118,7 +118,7 @@ function SettingsPage() {
       <section className="page-heading">
         <span className="eyebrow">SETTINGS</span>
         <h1>Settings</h1>
-        <p>Your profile, how the app behaves, and the data it keeps in this browser.</p>
+        <p>Your profile, how the app behaves, and the data saved in your account.</p>
       </section>
 
       <SettingsSection icon={UserRound} title="Account" description="Who is logged in, and how the app greets you.">
@@ -191,7 +191,7 @@ function SettingsPage() {
       <SettingsSection
         icon={HardDrive}
         title="Your data"
-        description="Your progress is stored in this browser, separately for each account. Export it to keep a backup or move to another device."
+        description="Your progress is saved in your account on the server, so it follows you to any device you log in on. Export it to keep a backup of your own."
       >
         <div className="settings-actions">
           <button type="button" className="secondary-button" onClick={exportData}>

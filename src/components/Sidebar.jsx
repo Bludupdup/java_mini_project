@@ -9,6 +9,7 @@ import {
   CircleHelp,
   ChevronRight,
   Boxes,
+  Cpu,
 } from "lucide-react";
 import { useLearning } from "../learning/LearningContext";
 
@@ -18,6 +19,7 @@ const navigation = [
     items: [
       { label: "Dashboard", icon: LayoutDashboard, path: "/" },
       { label: "Topics", icon: BookOpen, path: "/topics" },
+      { label: "Algorithms", icon: Cpu, path: "/algorithms" },
       { label: "Saved", icon: Bookmark, path: "/bookmarks", count: "saved" },
       { label: "Practice", icon: Code2, path: "/practice" },
     ],

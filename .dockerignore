@@ -1,0 +1,11 @@
+# Keep the Docker build small, and keep secrets and local data out of the image.
+.git
+.claude
+.data
+node_modules
+dist
+**/.env.local
+**/.env
+**/target
+learning-platform-backend-java/.vscode
+*.log

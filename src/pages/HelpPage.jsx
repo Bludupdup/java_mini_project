@@ -25,7 +25,7 @@ const QUESTIONS = [
   {
     question: "Where is my data stored?",
     answer:
-      "Your account (name, email and a scrambled version of your password, never the password itself) is kept on the app's server. Your progress is kept in this browser, separately for each account. Use Settings → Export progress to keep a backup or move to another device.",
+      "Everything is kept in the app's database: your account (name, email and a scrambled version of your password, never the password itself) and your progress, saved topics, notes and achievements. Log in on any device to pick up where you left off. Use Settings → Export progress to keep a backup of your own.",
   },
   {
     question: "How does the AI visualization work?",

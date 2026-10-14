@@ -1,13 +1,14 @@
 import { Link } from "react-router-dom";
 import { Bookmark } from "lucide-react";
 import TopicGrid from "../components/TopicGrid";
-import { topics } from "../data/topics";
+import { useCatalog } from "../catalog/CatalogContext";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useLearning } from "../learning/LearningContext";
 import { getSavedTopics } from "../learning/learningStore";
 
 function BookmarksPage() {
   useDocumentTitle("Saved topics");
+  const { topics } = useCatalog();
   const { state } = useLearning();
   const savedTopics = getSavedTopics(topics, state);
 

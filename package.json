@@ -8,8 +8,11 @@
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview",
+    "start": "node server/prodServer.js",
     "test": "vitest run",
-    "ai:try": "node --env-file=.env.local server/tryModel.js"
+    "ai:try": "node --env-file=.env.local server/tryModel.js",
+    "backend": "cd learning-platform-backend-java && mvnw spring-boot:run",
+    "test:backend": "cd learning-platform-backend-java && mvnw test"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",

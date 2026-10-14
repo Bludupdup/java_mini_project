@@ -12,6 +12,8 @@ import {
 import PlanPreview from "./PlanPreview";
 import { useLearning } from "../learning/LearningContext";
 import { PLAYBACK_SPEEDS } from "../learning/learningStore";
+import { buildSampleVisualization } from "../pages/service/visualizationAnalyzer";
+import { builtInFirstTopics } from "../pages/service/visualizationSamples";
 import {
   readCachedVisualization,
   requestVisualization,
@@ -20,6 +22,7 @@ import { replayPlan } from "../pages/service/visualizationReplay";
 import "./VisualizationPanel.css";
 
 function sourceLabel(result) {
+  if (result.source === "built-in") return "Built-in · exact simulation";
   if (result.source === "sample") return "Built-in sample";
 
   // "nvidia/nemotron-3-super-120b-a12b:free" → "nemotron-3-super-120b-a12b"
@@ -33,11 +36,23 @@ function sourceLabel(result) {
  * Asks the analyzer for this topic's plan and steps through it.
  * Render it with key={topic.id} so switching topics starts fresh.
  */
+// Some topics always use their code-built plan (see builtInFirstTopics).
+function builtInVisualization(topic) {
+  if (!builtInFirstTopics.has(topic.id)) return null;
+
+  const { plan } = buildSampleVisualization(topic);
+  return plan ? { plan, source: "built-in", attempts: 0, errors: [] } : null;
+}
+
 function VisualizationPanel({ topic }) {
   const [result, setResult] = useState(() => {
+    const builtIn = builtInVisualization(topic);
+    if (builtIn) return builtIn;
+
     const saved = readCachedVisualization(topic);
     return saved ? { ...saved, saved: true } : null;
   });
+  const builtIn = result?.source === "built-in";
   // "idle" → "loading" → "ready" or "error"
   const [status, setStatus] = useState(result ? "ready" : "idle");
   const [error, setError] = useState(null);
@@ -137,10 +152,14 @@ function VisualizationPanel({ topic }) {
           <Sparkles size={19} />
         </div>
         <div className="visualization-heading-text">
-          <h2>AI visualization</h2>
-          <p>AI turns this topic into a step-by-step animation</p>
+          <h2>{builtIn ? "Visualization" : "AI visualization"}</h2>
+          <p>
+            {builtIn
+              ? "Built by running the real algorithm, step by step"
+              : "AI turns this topic into a step-by-step animation"}
+          </p>
         </div>
-        {status === "ready" && (
+        {status === "ready" && !builtIn && (
           <button className="viz-button ghost" type="button" onClick={generate}>
             <RefreshCw size={15} />
             Regenerate

@@ -1,36 +1,12 @@
 import { Navigate, useLocation } from "react-router-dom";
-import { Boxes, LoaderCircle, RefreshCw, TriangleAlert } from "lucide-react";
+import Splash from "../components/Splash";
 import { useAuth } from "./AuthContext";
 
 /** Full-screen "checking your session" or "server unreachable" screen. */
 function AuthSplash() {
   const { status, error, retry } = useAuth();
 
-  return (
-    <div className="auth-screen">
-      <div className="auth-splash" role={status === "error" ? "alert" : "status"}>
-        <div className="brand-icon">
-          <Boxes size={23} />
-        </div>
-
-        {status === "error" ? (
-          <>
-            <p>
-              <TriangleAlert size={16} /> {error}
-            </p>
-            <button type="button" className="secondary-button" onClick={retry}>
-              <RefreshCw size={15} />
-              Try again
-            </button>
-          </>
-        ) : (
-          <p>
-            <LoaderCircle className="viz-spin" size={16} /> Loading your space…
-          </p>
-        )}
-      </div>
-    </div>
-  );
+  return <Splash error={status === "error" ? error : null} onRetry={retry} />;
 }
 
 /** Pages behind the login: anyone not logged in is sent to /login first. */

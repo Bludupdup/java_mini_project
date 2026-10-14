@@ -332,10 +332,144 @@ export function buildLinkedListReversalPlan(values = [1, 2, 3]) {
   };
 }
 
-// Topic id (from data/topics.js) → the sample plan for that topic.
+/**
+ * Backtracking: list every subset by deciding, item by item, to skip it (left
+ * branch) or take it (right branch), and undoing each choice on the way back.
+ * Runs the topic's explore(index) pseudocode and draws the tree of calls as it
+ * grows. Up to 3 items fit on screen (2³ = 8 leaves).
+ */
+export function buildSubsetsBacktrackingPlan(items = ["a", "b", "c"]) {
+  const n = items.length;
+  const leafCount = 2 ** n;
+  const TOP = 3;
+  const LEVEL_GAP = 1.6;
+  const resultsY = TOP - n * LEVEL_GAP - 1.8;
+
+  // A call is named by its choices so far: "" is the root, "01" means
+  // "skipped the first item, took the second". Leaf k is the binary number k,
+  // so leaves are found left to right.
+  const nodeId = (choices) => `call-${choices || "root"}`;
+  const subsetOf = (choices) => items.filter((_, index) => choices[index] === "1");
+  const show = (subset) => (subset.length > 0 ? subset.join("") : "∅");
+  const asList = (subset) => `[${subset.join(", ")}]`;
+  const leafX = (index) => rowX(index, leafCount, ROW_SPACING);
+
+  // Centred above the leaves it leads to.
+  function positionOf(choices) {
+    const first = parseInt(choices.padEnd(n, "0"), 2);
+    const last = parseInt(choices.padEnd(n, "1"), 2);
+    return [(leafX(first) + leafX(last)) / 2, TOP - choices.length * LEVEL_GAP, 0];
+  }
+
+  const callNode = (choices, state) => ({
+    id: nodeId(choices),
+    type: "node",
+    label: show(subsetOf(choices)),
+    position: positionOf(choices),
+    state,
+  });
+
+  // Labels can't change text, so the path label is replaced with a new one.
+  let pathVersion = 0;
+  const pathLabel = (subset) => ({
+    id: `path-${pathVersion}`,
+    type: "label",
+    label: `path = ${asList(subset)}`,
+    position: [leafX(0) - 0.6, TOP, 0],
+  });
+  function showPath(subset) {
+    const old = `path-${pathVersion}`;
+    pathVersion += 1;
+    return [{ type: "remove", target: old }, { type: "add", object: pathLabel(subset) }];
+  }
+
+  const objects = [
+    callNode("", "active"),
+    pathLabel([]),
+    { id: "found-label", type: "label", label: "found:", position: [leafX(0) - 1.5, resultsY, 0] },
+  ];
+
+  const { steps, add } = createStepList();
+  const found = [];
+
+  add(
+    `Find every subset of {${items.join(", ")}}. Each level decides one item: the left branch (−) skips it, the right branch (+) takes it.`,
+  );
+
+  // Called once the node for `choices` is on screen and active.
+  function explore(choices) {
+    const subset = subsetOf(choices);
+    const here = nodeId(choices);
+
+    if (choices.length === n) {
+      add(`All ${n} items are decided: record ${show(subset)} as a subset.`, [
+        setState([here], "found"),
+        {
+          type: "add",
+          object: {
+            id: `result-${found.length}`,
+            type: "box",
+            label: show(subset),
+            position: [leafX(found.length), resultsY, 0],
+            state: "found",
+          },
+        },
+      ]);
+      found.push(show(subset));
+      return;
+    }
+
+    const item = items[choices.length];
+    const skip = `${choices}0`;
+    const take = `${choices}1`;
+    // A finished leaf stays "found"; a finished inner call is "visited".
+    const finished = (child) => setState([nodeId(child)], child.length === n ? "found" : "visited");
+
+    add(`Skip ${item}: call explore with the path still ${asList(subset)}.`, [
+      setState([here], "compare"),
+      { type: "add", object: callNode(skip, "active") },
+      { type: "link", relationship: { id: `edge-${skip}`, from: here, to: nodeId(skip), label: `−${item}` } },
+    ]);
+    explore(skip);
+
+    add(`Back at ${asList(subset)}. Now take ${item}: the path becomes ${asList([...subset, item])}.`, [
+      finished(skip),
+      { type: "add", object: callNode(take, "active") },
+      { type: "link", relationship: { id: `edge-${take}`, from: here, to: nodeId(take), label: `+${item}` } },
+      ...showPath([...subset, item]),
+    ]);
+    explore(take);
+
+    add(`Back at ${asList(subset)}. Undo: remove ${item} from the path, then return.`, [
+      finished(take),
+      setState([here], "active"),
+      ...showPath(subset),
+    ]);
+  }
+
+  explore("");
+
+  add(`Done: all ${found.length} subsets are found: ${found.join(", ")}.`, [
+    setState([nodeId("")], "visited"),
+  ]);
+
+  return {
+    title: `All subsets of {${items.join(", ")}} with backtracking`,
+    scene: { type: "3d", objects, relationships: [] },
+    steps,
+  };
+}
+
+// Topic id (the slug, e.g. "bubble-sort") → the sample plan for that topic.
 export const samplePlanBuilders = {
   "bubble-sort": buildBubbleSortPlan,
   arrays: buildLinearSearchPlan,
   "stacks-queues": buildStackPlan,
   "linked-lists": buildLinkedListReversalPlan,
+  backtracking: buildSubsetsBacktrackingPlan,
 };
+
+// Topics that show their built-in plan straight away instead of asking the AI.
+// The AI can't reliably simulate and lay out a recursion tree, so for these the
+// code-built plan is the visualization.
+export const builtInFirstTopics = new Set(["backtracking"]);

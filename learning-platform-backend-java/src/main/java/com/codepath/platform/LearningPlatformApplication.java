@@ -2,16 +2,14 @@ package com.codepath.platform;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 
-@SpringBootApplication
+// Users log in with our own JWT filter, so Spring's default in-memory user
+// (and its "generated security password" log line) is switched off.
+@SpringBootApplication(exclude = UserDetailsServiceAutoConfiguration.class)
 public class LearningPlatformApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(LearningPlatformApplication.class, args);
-        System.out.println("=======================================================");
-        System.out.println("  Spring Boot DSA Learning Platform Backend Started!  ");
-        System.out.println("  Server Port: 8080                                    ");
-        System.out.println("  API Base URL: http://localhost:8080/api              ");
-        System.out.println("=======================================================");
     }
 }

@@ -9,8 +9,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import StatCard from "../components/StatCard";
-import { getTopicProblems, problems } from "../data/problems";
-import { topics } from "../data/topics";
+import { useCatalog } from "../catalog/CatalogContext";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { formatDate, plural } from "../learning/format";
 import { useLearning } from "../learning/LearningContext";
@@ -21,9 +20,8 @@ import {
 } from "../learning/learningStore";
 
 // "Visualization 8/18 steps · Problems 1/3 · Opened 11 Oct", for example.
-function describe(topic, state) {
+function describe(topic, state, topicProblems) {
   const record = state.topics[topic.id];
-  const topicProblems = getTopicProblems(topic.id);
   const solved = topicProblems.filter((problem) => state.problems[problem.id]?.solvedAt);
   const parts = [];
 
@@ -42,6 +40,7 @@ function describe(topic, state) {
 
 function ProgressPage() {
   useDocumentTitle("Progress");
+  const { topics, problems, getTopicProblems } = useCatalog();
   const { state, resetProgress } = useLearning();
   // Read the clock once per visit, not on every render.
   const [now] = useState(() => Date.now());
@@ -132,7 +131,7 @@ function ProgressPage() {
                   <span style={{ width: `${percent}%` }} />
                 </div>
 
-                <span className="progress-row-detail">{describe(topic, state)}</span>
+                <span className="progress-row-detail">{describe(topic, state, getTopicProblems(topic.id))}</span>
               </div>
 
               <span className="progress-row-percent">{percent}%</span>

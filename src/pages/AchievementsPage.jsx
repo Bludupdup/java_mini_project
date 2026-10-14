@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Lock } from "lucide-react";
-import { problems } from "../data/problems";
-import { topics } from "../data/topics";
+import { useCatalog } from "../catalog/CatalogContext";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { evaluateAchievements } from "../learning/achievements";
 import { formatDate } from "../learning/format";
@@ -51,6 +50,7 @@ function AchievementCard({ achievement }) {
 
 function AchievementsPage() {
   useDocumentTitle("Achievements");
+  const { topics, problems } = useCatalog();
   const { state } = useLearning();
   const [now] = useState(() => Date.now());
   const achievements = evaluateAchievements(

@@ -10,9 +10,8 @@ import {
 import { Link } from "react-router-dom";
 import StatCard from "../components/StatCard";
 import TopicGrid from "../components/TopicGrid";
-import { problems } from "../data/problems";
-import { topics } from "../data/topics";
 import { useAuth } from "../auth/AuthContext";
+import { useCatalog } from "../catalog/CatalogContext";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { plural } from "../learning/format";
 import { useLearning } from "../learning/LearningContext";
@@ -26,6 +25,7 @@ const SAVED_PREVIEW_COUNT = 3;
 
 function Dashboard() {
   useDocumentTitle("Dashboard");
+  const { topics, problems } = useCatalog();
   const { state } = useLearning();
   const { user } = useAuth();
   // Read the clock once per visit, not on every render.

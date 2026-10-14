@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { topics } from "./topics";
+import { topics } from "../test/catalog";
 import { filterTopics, getFilterOptions, searchTopics } from "./topicSearch";
 
 const ids = (list) => list.map((topic) => topic.id);
@@ -20,8 +20,17 @@ describe("searchTopics", () => {
   });
 
   it("needs every word to match", () => {
-    expect(ids(searchTopics(topics, "queue graph"))).toEqual(["graphs"]);
+    const results = ids(searchTopics(topics, "queue graph"));
+
+    expect(results).toEqual(["graphs", "topological-sort", "dijkstra"]);
+    // Mentions queues but not graphs.
+    expect(results).not.toContain("stacks-queues");
     expect(searchTopics(topics, "graph zebra")).toEqual([]);
+  });
+
+  it("finds the graph algorithms by name", () => {
+    expect(ids(searchTopics(topics, "dijkstra"))).toEqual(["dijkstra"]);
+    expect(ids(searchTopics(topics, "kruskal"))).toEqual(["kruskal-union-find"]);
   });
 });
 

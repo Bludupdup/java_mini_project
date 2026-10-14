@@ -1,73 +1,69 @@
 package com.codepath.platform.service;
 
-import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.function.Function;
+import java.util.Optional;
 
+/**
+ * Login tokens. A JWT is a small signed note saying "this is user 42 until
+ * <expiry>". Only this server knows the secret key, so nobody can forge or
+ * edit one, and the server doesn't need to remember who is logged in.
+ */
 @Service
 public class JwtService {
 
-    @Value("${app.jwt.secret:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}")
-    private String jwtSecret;
+    private static final Logger log = LoggerFactory.getLogger(JwtService.class);
 
-    @Value("${app.jwt.expiration-ms:86400000}")
-    private long jwtExpirationMs;
+    private final SecretKey key;
+    private final Duration lifetime;
 
-    private SecretKey getSigningKey() {
-        byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
-        return Keys.hmacShaKeyFor(keyBytes);
+    public JwtService(@Value("${app.jwt.secret:}") String secret,
+                      @Value("${app.jwt.lifetime:7d}") Duration lifetime) {
+        this.key = secret.isBlank() ? randomKey() : Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
+        this.lifetime = lifetime;
     }
 
-    public String extractEmail(String token) {
-        return extractClaim(token, Claims::getSubject);
+    private static SecretKey randomKey() {
+        log.warn("JWT_SECRET is not set, so a random key is used: everyone is logged out when the server restarts.");
+        return Jwts.SIG.HS256.key().build();
     }
 
-    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = extractAllClaims(token);
-        return claimsResolver.apply(claims);
+    public Duration getLifetime() {
+        return lifetime;
     }
 
-    private Claims extractAllClaims(String token) {
-        return Jwts.parser()
-                .verifyWith(getSigningKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-    }
-
-    public String generateToken(String email, Long userId, String role) {
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("userId", userId);
-        claims.put("role", role);
+    public String createToken(Long userId) {
+        Instant now = Instant.now();
 
         return Jwts.builder()
-                .claims(claims)
-                .subject(email)
-                .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
-                .signWith(getSigningKey())
+                .subject(String.valueOf(userId))
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plus(lifetime)))
+                .signWith(key)
                 .compact();
     }
 
-    public boolean isTokenValid(String token, String userEmail) {
-        final String email = extractEmail(token);
-        return (email.equals(userEmail) && !isTokenExpired(token));
-    }
-
-    private boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
-    }
-
-    private Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
+    /** The user id inside a valid token; empty if it's forged, damaged or expired. */
+    public Optional<Long> readUserId(String token) {
+        try {
+            String subject = Jwts.parser().verifyWith(key).build()
+                    .parseSignedClaims(token)
+                    .getPayload()
+                    .getSubject();
+            return Optional.of(Long.valueOf(subject));
+        } catch (JwtException | IllegalArgumentException e) {
+            return Optional.empty();
+        }
     }
 }

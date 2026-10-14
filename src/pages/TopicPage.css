@@ -478,3 +478,47 @@
 .practice-link {
   margin-top: 14px;
 }
+
+/* Algorithm pages (pages/AlgorithmPage.jsx) reuse the topic page and add these. */
+
+.algorithm-preformatted {
+  white-space: pre-line;
+}
+
+.algorithm-output-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0 10px;
+  color: #c6cbe0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.topic-code.algorithm-output {
+  color: #9be7b0;
+}
+
+.algorithm-facts {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.algorithm-facts dt {
+  margin-top: 10px;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.algorithm-facts dt:first-child {
+  margin-top: 0;
+}
+
+.algorithm-facts dd {
+  margin: 0;
+  color: #aab1c6;
+  font-size: 14px;
+  line-height: 1.7;
+}

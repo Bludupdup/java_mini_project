@@ -3,7 +3,7 @@ import { createContext, useContext } from "react";
 export const AuthContext = createContext(null);
 
 /**
- * { status, user, error, logIn, register, logOut }
+ * { status, user, error, retry, logIn, register, logOut, sessionExpired }
  * status: "loading" | "signed-in" | "signed-out" | "error"
  */
 export function useAuth() {

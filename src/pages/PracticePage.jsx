@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   CircleCheckBig,
@@ -12,19 +12,24 @@ import {
 import FilterSelect from "../components/FilterSelect";
 import SolvedButton from "../components/SolvedButton";
 import StatCard from "../components/StatCard";
-import { PROBLEM_DIFFICULTIES, problems } from "../data/problems";
-import { topics } from "../data/topics";
+import { PROBLEM_DIFFICULTIES } from "../catalog/catalog";
+import { useCatalog } from "../catalog/CatalogContext";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { formatDate } from "../learning/format";
 import { useLearning } from "../learning/LearningContext";
 import { MAX_NOTE_LENGTH } from "../learning/learningStore";
 
-const TOPIC_CHOICES = topics
-  .filter((topic) => problems.some((problem) => problem.topicId === topic.id))
-  .map((topic) => ({ value: topic.id, label: topic.title }));
-const DIFFICULTY_CHOICES = PROBLEM_DIFFICULTIES.filter((difficulty) =>
-  problems.some((problem) => problem.difficulty === difficulty),
-);
+// The topic and difficulty filters only offer choices that have problems.
+function getChoices(topics, problems) {
+  return {
+    topics: topics
+      .filter((topic) => problems.some((problem) => problem.topicId === topic.id))
+      .map((topic) => ({ value: topic.id, label: topic.title })),
+    difficulties: PROBLEM_DIFFICULTIES.filter((difficulty) =>
+      problems.some((problem) => problem.difficulty === difficulty),
+    ),
+  };
+}
 const STATUS_CHOICES = [
   { value: "todo", label: "To do" },
   { value: "solved", label: "Solved" },
@@ -105,12 +110,14 @@ function ProblemRow({ problem }) {
 
 function PracticePage() {
   useDocumentTitle("Practice");
+  const { topics, problems } = useCatalog();
+  const choices = useMemo(() => getChoices(topics, problems), [topics, problems]);
   const [params, setParams] = useSearchParams();
   const { state } = useLearning();
 
   const filters = {
-    topic: pick(params.get("topic"), TOPIC_CHOICES),
-    difficulty: pick(params.get("difficulty"), DIFFICULTY_CHOICES),
+    topic: pick(params.get("topic"), choices.topics),
+    difficulty: pick(params.get("difficulty"), choices.difficulties),
     status: pick(params.get("status"), STATUS_CHOICES),
     query: params.get("q") ?? "",
   };
@@ -195,13 +202,13 @@ function PracticePage() {
         <FilterSelect
           label="Topic"
           value={filters.topic}
-          choices={TOPIC_CHOICES}
+          choices={choices.topics}
           onChange={(value) => setFilter("topic", value)}
         />
         <FilterSelect
           label="Difficulty"
           value={filters.difficulty}
-          choices={DIFFICULTY_CHOICES}
+          choices={choices.difficulties}
           onChange={(value) => setFilter("difficulty", value)}
         />
         <FilterSelect

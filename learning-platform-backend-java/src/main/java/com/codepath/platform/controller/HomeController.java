@@ -1,44 +1,51 @@
 package com.codepath.platform.controller;
 
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestController
 public class HomeController {
 
-    @GetMapping("/health")
-    public ResponseEntity<?> healthCheck() {
-        return ResponseEntity.ok(Map.of(
-            "status", "healthy",
-            "framework", "Spring Boot 3.3.4 (Java 17)",
-            "timestamp", Instant.now().toString(),
-            "authentication", "Spring Security + JWT",
-            "database", "PostgreSQL"
-        ));
+    private final JdbcTemplate jdbcTemplate;
+
+    public HomeController(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    /** Is the server up, and can it reach the database? */
+    @GetMapping("/api/health")
+    public ResponseEntity<Map<String, String>> health() {
+        boolean databaseUp;
+        try {
+            databaseUp = jdbcTemplate.queryForObject("SELECT 1", Integer.class) == 1;
+        } catch (Exception e) {
+            databaseUp = false;
+        }
+
+        return ResponseEntity.status(databaseUp ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("status", databaseUp ? "ok" : "database unreachable"));
     }
 
     @GetMapping("/")
-    public ResponseEntity<?> root() {
-        return ResponseEntity.ok(Map.of(
-            "service", "DSA Learning Platform Backend API",
-            "version", "1.0.0",
-            "framework", "Spring Boot 3",
-            "docs", Map.of(
-                "auth_register", "POST /api/auth/register",
-                "auth_login", "POST /api/auth/login",
-                "auth_me", "GET /api/auth/me",
-                "stages", "GET /api/stages",
-                "topics", "GET /api/topics",
-                "topic_detail", "GET /api/topics/{identifier}",
-                "lesson", "GET /api/topics/{topicId}/lesson",
-                "progress_update", "POST /api/progress/topic",
-                "practice_attempt", "POST /api/progress/practice-attempt",
-                "dashboard", "GET /api/progress/dashboard"
-            )
-        ));
+    public Map<String, Object> root() {
+        Map<String, String> routes = new LinkedHashMap<>();
+        routes.put("health", "GET /api/health");
+        routes.put("register", "POST /api/auth/register");
+        routes.put("login", "POST /api/auth/login");
+        routes.put("logout", "POST /api/auth/logout");
+        routes.put("me", "GET /api/auth/me");
+        routes.put("topics", "GET /api/topics");
+        routes.put("topic", "GET /api/topics/{slug}");
+        routes.put("algorithms", "GET /api/algorithms");
+        routes.put("algorithm", "GET /api/algorithms/{slug}");
+        routes.put("learning", "GET | PUT | DELETE /api/learning (see README)");
+
+        return Map.of("service", "DSA Universe backend", "routes", routes);
     }
 }

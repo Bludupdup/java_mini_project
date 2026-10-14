@@ -4,6 +4,8 @@ import "./App.css";
 import { GuestOnly, RequireAuth } from "./auth/RouteGuards";
 import AppLayout from "./components/AppLayout";
 import AchievementsPage from "./pages/AchievementsPage";
+import AlgorithmPage from "./pages/AlgorithmPage";
+import AlgorithmsPage from "./pages/AlgorithmsPage";
 import BookmarksPage from "./pages/BookmarksPage";
 import Dashboard from "./pages/Dashboard";
 import HelpPage from "./pages/HelpPage";
@@ -45,6 +47,8 @@ function App() {
           element={<TopicsPage search={search} onSearchChange={setSearch} />}
         />
         <Route path="/topics/:topicId" element={<TopicPage />} />
+        <Route path="/algorithms" element={<AlgorithmsPage />} />
+        <Route path="/algorithms/:algorithmId" element={<AlgorithmPage />} />
         <Route path="/bookmarks" element={<BookmarksPage />} />
         <Route path="/practice" element={<PracticePage />} />
         <Route path="/progress" element={<ProgressPage />} />

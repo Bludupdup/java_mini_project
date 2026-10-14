@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { claimGuestProgress } from "../learning/learningStore";
 import { AuthContext } from "./AuthContext";
 import { fetchCurrentUser, logIn, logOut, register } from "./authClient";
 
@@ -45,10 +44,12 @@ function AuthProvider({ children }) {
 
       register: async (details) => {
         const user = await register(details);
-        // Progress made before accounts existed belongs to the first new account.
-        claimGuestProgress(user.id);
         setAuth({ status: "signed-in", user, error: null });
       },
+
+      // The server stopped accepting our login (it expired, or the account is
+      // gone): show the login page without asking the server again.
+      sessionExpired: () => setAuth({ status: "signed-out", user: null, error: null }),
 
       logOut: async () => {
         try {

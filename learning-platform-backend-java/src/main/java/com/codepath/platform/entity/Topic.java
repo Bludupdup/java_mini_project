@@ -1,73 +1,99 @@
 package com.codepath.platform.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import org.hibernate.annotations.Immutable;
+
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * One topic and its lesson content. The catalog is filled by
+ * db/migration/R__seed_catalog.sql and only ever read by the app.
+ */
 @Entity
+@Immutable
 @Table(name = "topics")
 public class Topic {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "stage_id", nullable = false)
-    @JsonIgnore
-    private Stage stage;
-
-    @Column(nullable = false, length = 200)
-    private String title;
-
-    @Column(columnDefinition = "TEXT")
-    private String description;
-
-    @Column(name = "sequence_number", nullable = false, unique = true)
-    private Integer sequenceNumber;
-
-    @Column(nullable = false, unique = true, length = 120)
+    // The id the frontend uses, e.g. "arrays" in /topics/arrays.
+    @Column(nullable = false, unique = true)
     private String slug;
 
-    @OneToMany(mappedBy = "topic", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<TopicVideo> videos = new ArrayList<>();
+    private String title;
+    private String category;
+    private String description;
+    private String level;
 
-    @OneToMany(mappedBy = "topic", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<PracticeProblem> practiceProblems = new ArrayList<>();
+    @Column(name = "lesson_count")
+    private int lessonCount;
 
-    @OneToOne(mappedBy = "topic", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private Lesson lesson;
+    @Column(name = "read_time")
+    private String readTime;
 
-    public Topic() {}
+    private String icon;
+    private String color;
+    private String theory;
+    private String tip;
+    private String pseudocode;
+
+    @Column(name = "sort_order")
+    private int sortOrder;
+
+    // Each list lives in its own table, one row per item; "position" keeps the order.
+    @ElementCollection
+    @CollectionTable(name = "topic_structures", joinColumns = @JoinColumn(name = "topic_id"))
+    @OrderColumn(name = "position")
+    @Column(name = "name")
+    private List<String> structures = new ArrayList<>();
+
+    @ElementCollection
+    @CollectionTable(name = "topic_steps", joinColumns = @JoinColumn(name = "topic_id"))
+    @OrderColumn(name = "position")
+    @Column(name = "content")
+    private List<String> steps = new ArrayList<>();
+
+    @ElementCollection
+    @CollectionTable(name = "topic_complexities", joinColumns = @JoinColumn(name = "topic_id"))
+    @OrderColumn(name = "position")
+    private List<ComplexityRow> complexity = new ArrayList<>();
+
+    @ElementCollection
+    @CollectionTable(name = "topic_resources", joinColumns = @JoinColumn(name = "topic_id"))
+    @OrderColumn(name = "position")
+    private List<TopicResource> resources = new ArrayList<>();
+
+    @OneToMany(mappedBy = "topic")
+    @OrderBy("position")
+    private List<PracticeProblem> problems = new ArrayList<>();
+
+    // Algorithms from the library that belong to this topic.
+    @OneToMany(mappedBy = "topic")
+    @OrderBy("displayOrder")
+    private List<Algorithm> algorithms = new ArrayList<>();
+
+    protected Topic() {}
 
     public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-
-    public Stage getStage() { return stage; }
-    public void setStage(Stage stage) { this.stage = stage; }
-
-    public Long getStageId() { return stage != null ? stage.getId() : null; }
-    public String getStageName() { return stage != null ? stage.getName() : null; }
-
-    public String getTitle() { return title; }
-    public void setTitle(String title) { this.title = title; }
-
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
-
-    public Integer getSequenceNumber() { return sequenceNumber; }
-    public void setSequenceNumber(Integer sequenceNumber) { this.sequenceNumber = sequenceNumber; }
-
     public String getSlug() { return slug; }
-    public void setSlug(String slug) { this.slug = slug; }
-
-    public List<TopicVideo> getVideos() { return videos; }
-    public void setVideos(List<TopicVideo> videos) { this.videos = videos; }
-
-    public List<PracticeProblem> getPracticeProblems() { return practiceProblems; }
-    public void setPracticeProblems(List<PracticeProblem> practiceProblems) { this.practiceProblems = practiceProblems; }
-
-    public Lesson getLesson() { return lesson; }
-    public void setLesson(Lesson lesson) { this.lesson = lesson; }
+    public String getTitle() { return title; }
+    public String getCategory() { return category; }
+    public String getDescription() { return description; }
+    public String getLevel() { return level; }
+    public int getLessonCount() { return lessonCount; }
+    public String getReadTime() { return readTime; }
+    public String getIcon() { return icon; }
+    public String getColor() { return color; }
+    public String getTheory() { return theory; }
+    public String getTip() { return tip; }
+    public String getPseudocode() { return pseudocode; }
+    public int getSortOrder() { return sortOrder; }
+    public List<String> getStructures() { return structures; }
+    public List<String> getSteps() { return steps; }
+    public List<ComplexityRow> getComplexity() { return complexity; }
+    public List<TopicResource> getResources() { return resources; }
+    public List<PracticeProblem> getProblems() { return problems; }
+    public List<Algorithm> getAlgorithms() { return algorithms; }
 }

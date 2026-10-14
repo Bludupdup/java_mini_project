@@ -1,0 +1,27 @@
+# Render Blueprint: in the Render dashboard choose New → Blueprint and pick
+# this repository. Render builds the Dockerfile and asks for the values marked
+# "sync: false" (the Neon database details and the AI key).
+services:
+  - type: web
+    name: dsa-universe
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      # Neon: jdbc:postgresql://<host>/<database>?sslmode=require
+      - key: DB_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      # Signs login cookies. Render makes a random one; keep it secret.
+      - key: JWT_SECRET
+        generateValue: true
+      # AI visualizations (OpenRouter). Optional: without it, topics with a
+      # built-in plan still work.
+      - key: OPENROUTER_API_KEY
+        sync: false

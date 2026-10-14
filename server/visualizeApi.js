@@ -1,17 +1,19 @@
 /**
  * POST /api/visualize — the browser's only way to reach the analyzer.
  *
- * A Vite plugin that adds this route to the dev server (`npm run dev`) and
- * the preview server (`npm run preview`). The browser sends a topic; this
- * runs the analyzer here in Node, where the AI key lives, and sends back
- * { plan, source, attempts, errors }. Only logged-in users may call it, so
- * nobody else who can reach the server can spend the AI key.
+ * The browser sends a topic; this runs the analyzer here in Node, where the
+ * AI key lives, and sends back { plan, source, attempts, errors }. Only
+ * logged-in users may call it, so nobody else who can reach the server can
+ * spend the AI key. Logins live in the Java backend, so getRequestUser (from
+ * backendAuth.js) asks it.
  *
- * A production deploy needs the same handler in a real backend.
+ * createVisualizeHandler is a plain (req, res) handler: the production server
+ * (prodServer.js) uses it directly, and visualizeApi wraps it as a Vite plugin
+ * for the dev server (`npm run dev`) and the preview server (`npm run preview`).
  */
 
 import { analyzeTopicWithLLM } from "../src/pages/service/visualizationAnalyzer.js";
-import { getRequestUser } from "./authApi.js";
+import { BackendUnavailableError } from "./backendAuth.js";
 import { BadRequestError, isRecord, readJsonBody, sendJson } from "./http.js";
 
 // Longest accepted value for each text field of a topic.
@@ -67,8 +69,11 @@ function readTopic(input) {
   return topic;
 }
 
-/** llm: { label, callModel } from llm.js, so this route works with any AI service. */
-export function visualizeApi({ llm, authStore }) {
+/**
+ * llm: { label, callModel } from llm.js, so this route works with any AI service.
+ * getRequestUser: (req) → the logged-in user or null, from backendAuth.js.
+ */
+export function createVisualizeHandler({ llm, getRequestUser }) {
   const { callModel } = llm;
 
   // Requests for the same topic that arrive while one is already running
@@ -109,7 +114,7 @@ export function visualizeApi({ llm, authStore }) {
     }
 
     try {
-      if (!(await getRequestUser(authStore, req))) {
+      if (!(await getRequestUser(req))) {
         sendJson(res, 401, { error: "Please log in to generate visualizations." });
         return;
       }
@@ -124,11 +129,23 @@ export function visualizeApi({ llm, authStore }) {
         return;
       }
 
+      if (error instanceof BackendUnavailableError) {
+        console.error("[visualize]", error.message);
+        sendJson(res, 503, { error: "Can't reach the backend server to check your login. Is it running?" });
+        return;
+      }
+
       console.error("[visualize]", error);
       sendJson(res, 500, { error: "Something went wrong while building the visualization." });
     }
   }
 
+  return handle;
+}
+
+/** The same route as a Vite plugin, for `npm run dev` and `npm run preview`. */
+export function visualizeApi(options) {
+  const handle = createVisualizeHandler(options);
   const addRoute = (server) => {
     server.middlewares.use("/api/visualize", handle);
   };

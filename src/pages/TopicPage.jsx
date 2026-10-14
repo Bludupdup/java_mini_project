@@ -9,6 +9,7 @@ import {
   Circle,
   Clock3,
   Code2,
+  Cpu,
   ExternalLink,
   Lightbulb,
   PlayCircle,
@@ -16,8 +17,7 @@ import {
 import BookmarkButton from "../components/BookmarkButton";
 import SolvedButton from "../components/SolvedButton";
 import VisualizationPanel from "../components/VisualizationPanel";
-import { getTopicProblems } from "../data/problems";
-import { topics } from "../data/topics";
+import { useCatalog } from "../catalog/CatalogContext";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useLearning } from "../learning/LearningContext";
 import "./TopicPage.css";
@@ -43,7 +43,8 @@ function BackButton() {
 
 function TopicPage() {
   const { topicId } = useParams();
-  const topic = topics.find((item) => item.id === topicId);
+  const { topics, getTopic, getTopicProblems } = useCatalog();
+  const topic = getTopic(topicId);
   const { visitTopic, setCompleted, getProgress } = useLearning();
 
   useDocumentTitle(topic ? topic.title : "Topic not found");
@@ -259,6 +260,28 @@ function TopicPage() {
               Notes and more in Practice <ArrowRight size={15} />
             </Link>
           </section>
+
+          {topic.algorithms?.length > 0 && (
+            <section className="topic-panel">
+              <h2>Algorithms in this topic</h2>
+              <p className="resource-subtitle">
+                Each with steps, a worked example and C++ code.
+              </p>
+
+              {topic.algorithms.map((algorithm) => (
+                <Link className="resource-link" to={`/algorithms/${algorithm.id}`} key={algorithm.id}>
+                  <div className="resource-icon">
+                    <Cpu size={19} />
+                  </div>
+                  <div className="resource-info">
+                    <strong>{algorithm.name}</strong>
+                    <span>Algorithm library</span>
+                  </div>
+                  <ArrowRight size={15} />
+                </Link>
+              ))}
+            </section>
+          )}
         </aside>
       </div>
 

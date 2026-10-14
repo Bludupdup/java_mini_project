@@ -1,94 +1,122 @@
-import { useEffect, useMemo, useReducer } from "react";
-import { problems } from "../data/problems";
-import { topics } from "../data/topics";
+import { useEffect, useLayoutEffect, useMemo, useReducer, useState } from "react";
+import { useAuth } from "../auth/AuthContext";
+import { useCatalog } from "../catalog/CatalogContext";
+import Splash from "../components/Splash";
 import { findNewAchievements } from "./achievements";
 import { LearningContext } from "./LearningContext";
-import {
-  getLearningStats,
-  getTopicProgress,
-  learningReducer,
-  loadLearningState,
-  sanitizeLearningState,
-  saveLearningState,
-  userStorageKey,
-} from "./learningStore";
+import * as server from "./learningClient";
+import { getLearningStats, getTopicProgress, learningReducer } from "./learningStore";
+import { createLearningSync, loadLearningState } from "./learningSync";
 
 /**
- * Keeps one account's progress, achievements and preferences, saved in
- * localStorage. Render it with key={userId}, so switching accounts starts fresh.
+ * Keeps one account's progress, achievements and preferences, saved in the
+ * database through the backend. learningSync.js does the saving: each action
+ * updates the screen at once, then sends the change to the server.
+ * Render it with key={userId}, so switching accounts starts fresh.
  */
-function LearningProvider({ userId, children }) {
-  const storageKey = userStorageKey(userId);
-  const [state, dispatch] = useReducer(learningReducer, undefined, () =>
-    loadLearningState(storageKey),
+function LearningProvider({ children }) {
+  const { topics, problems } = useCatalog();
+  const { sessionExpired } = useAuth();
+  const [state, dispatch] = useReducer(learningReducer, null); // null until loaded
+  const [loadError, setLoadError] = useState(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [saveError, setSaveError] = useState(null);
+
+  // Created once; it lives as long as this account is logged in.
+  const [sync] = useState(() =>
+    createLearningSync({
+      server,
+      dispatch,
+      onSaveError: setSaveError,
+      onSessionExpired: sessionExpired,
+    }),
   );
 
+  // Actions read the state from sync, so keep it up to date.
+  useLayoutEffect(() => {
+    sync.setState(state);
+  }, [sync, state]);
+
+  useEffect(() => () => sync.dispose(), [sync]);
+
   useEffect(() => {
-    saveLearningState(state, storageKey);
-  }, [state, storageKey]);
+    let cancelled = false;
+
+    loadLearningState(server).then(
+      (loaded) => !cancelled && dispatch({ type: "replace", state: loaded }),
+      (error) => {
+        if (cancelled) return;
+        if (error.status === 401) sessionExpired();
+        else setLoadError(error.message);
+      },
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadAttempt, sessionExpired]);
+
+  // Back from another tab or window: pick up changes made there.
+  useEffect(() => {
+    function handleVisibility() {
+      if (document.visibilityState === "visible") sync.refresh();
+    }
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [sync]);
 
   // Unlock achievements as soon as they are earned.
   useEffect(() => {
+    if (!state) return;
+
     const now = Date.now();
     const ids = findNewAchievements(
       getLearningStats(topics, problems, state, now),
       state.achievements,
     );
 
-    if (ids.length > 0) dispatch({ type: "unlockAchievements", ids, now });
-  }, [state]);
+    if (ids.length > 0) sync.unlockAchievements(ids, now);
+  }, [state, topics, problems, sync]);
 
   // Settings → "Reduce motion" turns animations off everywhere (see index.css).
   // The cleanup also runs on logout, so the next person starts with the default.
+  const reduceMotion = Boolean(state?.preferences.reduceMotion);
+
   useEffect(() => {
     const root = document.documentElement;
 
-    root.classList.toggle("reduce-motion", state.preferences.reduceMotion);
+    root.classList.toggle("reduce-motion", reduceMotion);
     return () => root.classList.remove("reduce-motion");
-  }, [state.preferences.reduceMotion]);
-
-  // Another tab saved new data: follow it, so both tabs agree.
-  useEffect(() => {
-    function handleStorage(event) {
-      if (event.key === storageKey) {
-        dispatch({ type: "replace", state: loadLearningState(storageKey) });
-      }
-    }
-
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
-  }, [storageKey]);
-
-  // Created once, so effects that call them don't re-run on every change.
-  const actions = useMemo(
-    () => ({
-      toggleBookmark: (id) => dispatch({ type: "toggleBookmark", id }),
-      visitTopic: (id) => dispatch({ type: "visit", id, now: Date.now() }),
-      setCompleted: (id, completed) =>
-        dispatch({ type: "setCompleted", id, completed, now: Date.now() }),
-      recordStep: (id, step, total) =>
-        dispatch({ type: "recordStep", id, step, total, now: Date.now() }),
-      toggleSolved: (id) => dispatch({ type: "toggleSolved", id, now: Date.now() }),
-      setNote: (id, note) => dispatch({ type: "setNote", id, note }),
-      markNotificationsRead: () => dispatch({ type: "markNotificationsRead", now: Date.now() }),
-      setPreferences: (changes) => dispatch({ type: "setPreferences", changes }),
-      importState: (data) => dispatch({ type: "replace", state: sanitizeLearningState(data) }),
-      resetProgress: () => dispatch({ type: "resetProgress" }),
-      resetEverything: () => dispatch({ type: "resetEverything" }),
-    }),
-    [],
-  );
+  }, [reduceMotion]);
 
   const value = useMemo(
-    () => ({
-      state,
-      ...actions,
-      isBookmarked: (id) => state.bookmarks.includes(id),
-      isSolved: (id) => Boolean(state.problems[id]?.solvedAt),
-      getProgress: (id) => getTopicProgress(state.topics[id]),
-    }),
-    [state, actions],
+    () =>
+      state && {
+        state,
+        ...sync.actions,
+        isBookmarked: (id) => state.bookmarks.includes(id),
+        isSolved: (id) => Boolean(state.problems[id]?.solvedAt),
+        getProgress: (id) => getTopicProgress(state.topics[id]),
+        saveError,
+        dismissSaveError: () => setSaveError(null),
+      },
+    [state, sync, saveError],
   );
+
+  if (loadError) {
+    return (
+      <Splash
+        error={loadError}
+        onRetry={() => {
+          setLoadError(null);
+          setLoadAttempt((count) => count + 1);
+        }}
+      />
+    );
+  }
+
+  if (!value) return <Splash message="Loading your progress…" />;
 
   return <LearningContext value={value}>{children}</LearningContext>;
 }
